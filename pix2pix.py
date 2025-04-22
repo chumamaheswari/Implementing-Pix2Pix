@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 import torch.nn as nn
+import torch.optim as optim
 
 # Define a custom dataset class for flat image directories
 class SimpleImageDataset(Dataset):
@@ -103,3 +104,44 @@ class SimpleDiscriminator(nn.Module):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 G = BasicGenerator().to(device)
 D = SimpleDiscriminator().to(device)
+
+
+
+# -----------
+# Training
+# -----------
+adversarial_loss = nn.BCELoss()
+reconstruction_loss = nn.L1Loss()
+
+opt_G = optim.Adam(G.parameters(), lr=2e-4, betas=(0.5, 0.999))
+opt_D = optim.Adam(D.parameters(), lr=2e-4, betas=(0.5, 0.999))
+
+EPOCHS = 10
+for epoch in range(EPOCHS):
+    for (sat_imgs, _), (map_imgs, _) in zip(sat_loader, map_loader):
+        sat_imgs = sat_imgs.to(device)
+        map_imgs = map_imgs.to(device)
+
+        # Forward pass
+        fake_maps = G(sat_imgs)
+
+        # Discriminator
+        D_real = D(map_imgs)
+        D_fake = D(fake_maps.detach())
+        d_loss = (adversarial_loss(D_real, torch.ones_like(D_real)) +
+                  adversarial_loss(D_fake, torch.zeros_like(D_fake))) / 2
+
+        opt_D.zero_grad()
+        d_loss.backward()
+        opt_D.step()
+
+        # Generator
+        g_adv = adversarial_loss(D(fake_maps), torch.ones_like(D_fake))
+        g_recon = reconstruction_loss(fake_maps, map_imgs)
+        g_loss = g_adv + 10 * g_recon
+
+        opt_G.zero_grad()
+        g_loss.backward()
+        opt_G.step()
+
+    print(f"Epoch [{epoch+1}/{EPOCHS}] | D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}")
