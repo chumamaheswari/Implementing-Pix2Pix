@@ -5,6 +5,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
+import torch.nn as nn
 
 # Define a custom dataset class for flat image directories
 class SimpleImageDataset(Dataset):
@@ -57,3 +58,48 @@ def visualize_random_sample(dataset, title="Satellite Image Example"):
     plt.show()
 
 visualize_random_sample(sat_data)
+
+
+
+
+# -----------
+# Models
+# -----------
+class BasicGenerator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encode = nn.Sequential(
+            nn.Conv2d(3, 64, 4, 2, 1),  # [B, 64, 128, 128]
+            nn.ReLU(True)
+        )
+        self.decode = nn.Sequential(
+            nn.ConvTranspose2d(64, 3, 4, 2, 1),  # [B, 3, 256, 256]
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+        return self.decode(self.encode(x))
+
+
+class SimpleDiscriminator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.main = nn.Sequential(
+            nn.Conv2d(3, 64, 4, 2, 1),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(64, 128, 4, 2, 1),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2, True),
+            nn.Flatten(),
+            nn.Linear(128 * 60 * 60, 1),  # Adjust input size based on your image dimensions
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        return self.main(x)
+
+
+# Setup device and models
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+G = BasicGenerator().to(device)
+D = SimpleDiscriminator().to(device)
