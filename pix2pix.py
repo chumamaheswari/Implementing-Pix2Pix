@@ -145,3 +145,23 @@ for epoch in range(EPOCHS):
         opt_G.step()
 
     print(f"Epoch [{epoch+1}/{EPOCHS}] | D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}")
+
+
+
+# -----------
+# Visualize Translation
+# -----------
+test_img, _ = sat_data[0]
+test_img = test_img.unsqueeze(0).to(device)
+translated = G(test_img).detach().squeeze().cpu().permute(1, 2, 0)
+original = test_img.squeeze().cpu().permute(1, 2, 0)
+
+fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+ax[0].imshow(original * 0.5 + 0.5)
+ax[0].set_title("Original (Satellite)")
+ax[0].axis("off")
+
+ax[1].imshow(translated * 0.5 + 0.5)
+ax[1].set_title("Generated (Map)")
+ax[1].axis("off")
+plt.show()
